@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Pages 视频压缩工具</title>
+    
+    <script src="coi-serviceworker.js"></script>
+
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { margin: 0 0 15px 0; font-size: 1.4rem; color: #1a73e8; }
+        .badge {
+            background: #e8f0fe; color: #1a73e8; padding: 4px 8px; 
+            border-radius: 4px; font-size: 0.75rem; font-weight: bold;
+            display: inline-block; margin-bottom: 20px;
+        }
+        
+        /* 上传区域样式 */
+        .upload-box {
+            border: 2px dashed #cbd5e0;
+            padding: 40px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        .upload-box:hover { border-color: #1a73e8; background: #f8fbff; }
+        .upload-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+        input[type="file"] { display: none; }
+
+        /* 按钮样式 */
+        button {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3);
+            transition: transform 0.1s;
+        }
+        button:disabled { background-color: #ccc; box-shadow: none; cursor: not-allowed; }
+        button:active { transform: scale(0.98); }
+
+        /* 状态和日志 */
+        .status-box { 
+            margin-top: 20px; text-align: left; font-size: 0.85rem; 
+            background: #2d2d2d; color: #00ff00; padding: 15px; 
+            border-radius: 8px; font-family: monospace; 
+            height: 120px; overflow-y: auto; display: none;
+        }
+        
+        /* 结果展示 */
+        .result-card { 
+            margin-top: 25px; display: none; border-top: 1px solid #eee; padding-top: 20px; 
+        }
+        .stats {
+            display: flex; justify-content: space-around; margin-bottom: 15px;
+            background: #f8f9fa; padding: 10px; border-radius: 8px;
+        }
+        .stat-item span { display: block; font-size: 0.8rem; color: #666; }
+        .stat-item strong { display: block; font-size: 1.1rem; color: #333; }
+        video { width: 100%; border-radius: 8px; margin-bottom: 15px; background: black; }
+
+        .progress-container {
+            width: 100%; background: #eee; height: 6px; border-radius: 3px;
+            margin-top: 20px; overflow: hidden; display: none;
+        }
+        .progress-bar { height: 100%; background: #1a73e8; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Web 视频极限压缩</h1>
+    <div class="badge">运行于 GitHub Pages (WASM)</div>
+
+    <label class="upload-box" id="drop-area">
+        <span class="upload-icon">📂</span>
+        <span id="file-label">点击选择 MP4/MOV 视频</span>
+        <input type="file" id="uploader" accept="video/*">
+    </label>
+
+    <div class="progress-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <button id="compress-btn" disabled>开始压缩</button>
+
+    <div class="status-box" id="log"></div>
+
+    <div class="result-card" id="result-area">
+        <div class="stats">
+            <div class="stat-item"><span>原始大小</span><strong id="orig-size">-</strong></div>
+            <div class="stat-item"><span>压缩后</span><strong id="new-size">-</strong></div>
+            <div class="stat-item"><span>节省</span><strong id="percent-saved" style="color:#27ae60">-</strong></div>
+        </div>
+        <video id="output-video" controls></video>
+        <a id="download-link" download="compressed_video.mp4">
+            <button style="width:100%; background:#27ae60;">下载视频</button>
+        </a>
+    </div>
+</div>
+
+<script>
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile } = FFmpegUtil;
+    let ffmpeg = null;
+    let inputFile = null;
+
+    const logEl = document.getElementById('log');
+    const btn = document.getElementById('compress-btn');
+    const uploader = document.getElementById('uploader');
+    const pBar = document.getElementById('progress-bar');
+    const pCont = document.getElementById('progress-container');
+
+    const log = (msg) => {
+        logEl.style.display = 'block';
+        logEl.innerHTML += `> ${msg}<br>`;
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    const init = async () => {
+        ffmpeg = new FFmpeg();
+        ffmpeg.on('progress', ({ progress }) => {
+            const pct = Math.round(progress * 100);
+            pBar.style.width = `${pct}%`;
+            if(pct < 100) btn.innerText = `压缩中... ${pct}%`;
+        });
+
+        try {
+            await ffmpeg.load({
+                coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
+            });
+            log("系统就绪，请上传视频。");
+        } catch (e) {
+            log("错误: FFmpeg 加载失败。请检查是否已上传 coi-serviceworker.js 到仓库。");
+            console.error(e);
+        }
+    };
+
+    // 检查 SharedArrayBuffer 支持 (Service Worker 是否生效)
+    if (!window.crossOriginIsolated) {
+        alert("警告：未检测到安全上下文。\n\n如果你在 GitHub Pages 运行，请确保 'coi-serviceworker.js' 文件已存在且与 html 同级。\n\n页面将尝试自动刷新以激活 Service Worker。");
+    }
+
+    init();
+
+    uploader.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            inputFile = file;
+            document.getElementById('file-label').innerText = file.name;
+            btn.disabled = false;
+            document.getElementById('result-area').style.display = 'none';
+        }
+    });
+
+    btn.addEventListener('click', async () => {
+        if (!ffmpeg || !inputFile) return;
+        
+        btn.disabled = true;
+        pCont.style.display = 'block';
+        pBar.style.width = '0%';
+        log("开始读取文件...");
+
+        try {
+            await ffmpeg.writeFile('input.mp4', await fetchFile(inputFile));
+            
+            log("正在压缩 (CRF 30, Preset VeryFast)...");
+            
+            const startTime = Date.now();
+            
+            // 极限压缩参数设置
+            await ffmpeg.exec([
+                '-i', 'input.mp4',
+                '-c:v', 'libx264',
+                '-crf', '30',           // 提高 CRF 值以获得更小的体积 (默认23)
+                '-preset', 'veryfast',  // 提高速度，牺牲微小压缩比
+                '-c:a', 'aac',
+                '-b:a', '96k',          // 降低音频比特率
+                '-movflags', '+faststart', // Web 播放优化
+                'output.mp4'
+            ]);
+
+            log(`处理完成! 耗时 ${(Date.now() - startTime) / 1000} 秒`);
+            
+            const data = await ffmpeg.readFile('output.mp4');
+            const blob = new Blob([data.buffer], { type: 'video/mp4' });
+            const url = URL.createObjectURL(blob);
+
+            // 显示结果
+            document.getElementById('output-video').src = url;
+            document.getElementById('download-link').href = url;
+            
+            const origMB = inputFile.size / 1024 / 1024;
+            const newMB = blob.size / 1024 / 1024;
+            
+            document.getElementById('orig-size').innerText = `${origMB.toFixed(2)} MB`;
+            document.getElementById('new-size').innerText = `${newMB.toFixed(2)} MB`;
+            document.getElementById('percent-saved').innerText = `-${((1 - newMB/origMB)*100).toFixed(1)}%`;
+            
+            document.getElementById('result-area').style.display = 'block';
+            btn.innerText = "压缩完成";
+            
+        } catch (err) {
+            log("错误: " + err.message);
+        } finally {
+            btn.disabled = false;
+            if(btn.innerText !== "压缩完成") btn.innerText = "开始压缩";
+        }
+    });
+</script>
+</body>
+</html>
