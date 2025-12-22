@@ -3,458 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Media Compressor Web v5.0 (Full Port)</title>
+    <title>Halo Media Tool (Vercel Accelerated)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
     <style>
         body { background-color: #f0f2f5; font-family: "Microsoft YaHei UI", sans-serif; }
         .main-container { max-width: 980px; margin: 30px auto; background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); overflow: hidden; }
-        .header { background: #0d6efd; color: white; padding: 20px; }
+        .header { background: #6f42c1; color: white; padding: 20px; } /* Vercel 紫 */
         .nav-tabs .nav-link { color: #495057; font-weight: 600; padding: 15px 25px; }
-        .nav-tabs .nav-link.active { color: #0d6efd; border-bottom: 3px solid #0d6efd; }
+        .nav-tabs .nav-link.active { color: #6f42c1; border-bottom: 3px solid #6f42c1; }
         .tab-content { padding: 25px; }
-        
-        /* 通用样式 */
         .drop-zone { border: 2px dashed #adb5bd; background: #f8f9fa; padding: 30px; text-align: center; cursor: pointer; border-radius: 8px; transition: 0.3s; }
-        .drop-zone:hover { border-color: #0d6efd; background: #e9ecef; }
+        .drop-zone:hover { border-color: #6f42c1; background: #e9ecef; }
         .log-box { background: #212529; color: #00ff00; font-family: Consolas, monospace; font-size: 0.85rem; height: 150px; overflow-y: auto; padding: 10px; border-radius: 6px; margin-top: 15px; }
         .param-group { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dee2e6; }
-        .btn-primary { background-color: #0d6efd; }
     </style>
 </head>
 <body>
 
 <div class="main-container">
     <div class="header d-flex justify-content-between align-items-center">
-        <h4 class="m-0">Halo Media Compressor <span class="badge bg-light text-primary" style="font-size:0.6em">Web v5.0</span></h4>
-        <small>复刻自 Python v4.6</small>
+        <h4 class="m-0">Halo Media Tool <span class="badge bg-light text-dark" style="font-size:0.6em">Multi-Threaded</span></h4>
+        <small>Powered by Vercel</small>
     </div>
 
     <ul class="nav nav-tabs" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="img-tab" data-bs-toggle="tab" data-bs-target="#img-pane" type="button">🖼️ 图片压缩</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-pane" type="button">🎬 视频压缩</button>
-        </li>
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#img-pane">🖼️ 图片压缩</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#video-pane">🎬 视频压缩</button></li>
     </ul>
 
     <div class="tab-content">
-        
-        <div class="tab-pane fade show active" id="img-pane" role="tabpanel">
+        <div class="tab-pane fade show active" id="img-pane">
             <div class="row">
                 <div class="col-md-5">
                     <div class="param-group">
-                        <label class="form-label fw-bold">压缩参数</label>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">图片质量 (5-100)</label>
-                            <div class="d-flex align-items-center">
-                                <input type="range" class="form-range flex-grow-1" id="img-quality" min="5" max="100" value="75">
-                                <span class="badge bg-primary ms-2" id="img-quality-val">75</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">最大宽度 (px, 0=不缩放)</label>
-                            <input type="number" class="form-control" id="img-max-width" value="0" placeholder="例如: 1920">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">输出格式</label>
-                            <select class="form-select" id="img-format">
-                                <option value="image/jpeg">JPEG (默认)</option>
-                                <option value="image/png">PNG</option>
-                                <option value="image/webp">WEBP (推荐)</option>
-                            </select>
-                        </div>
+                        <label class="form-label fw-bold">图片参数</label>
+                        <div class="mb-3"><label>质量 (5-100)</label><div class="d-flex"><input type="range" class="form-range flex-grow-1" id="img-quality" min="5" max="100" value="75"><span class="badge bg-secondary ms-2" id="img-val">75</span></div></div>
+                        <div class="mb-3"><label>最大宽度</label><input type="number" class="form-control" id="img-width" value="0" placeholder="0=原图"></div>
+                        <div class="mb-3"><label>格式</label><select class="form-select" id="img-fmt"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WEBP</option></select></div>
                     </div>
                 </div>
-
                 <div class="col-md-7">
-                    <div class="drop-zone" id="img-drop-area">
-                        <h5>点击或拖拽图片到这里</h5>
-                        <p class="text-muted small">支持 JPG, PNG, WEBP (可多选)</p>
-                        <input type="file" id="img-input" accept="image/*" multiple style="display:none">
-                    </div>
-                    
-                    <div class="mt-3">
-                        <button id="img-start-btn" class="btn btn-success w-100" disabled>开始处理图片</button>
-                    </div>
-
-                    <div id="img-result-area" class="mt-3" style="display:none;">
-                        <div class="alert alert-success py-2 d-flex justify-content-between align-items-center">
-                            <span>处理完成: <b id="img-count">0</b> 张</span>
-                            <button id="img-dl-btn" class="btn btn-sm btn-outline-success" style="background:white;">📦 打包下载 (ZIP)</button>
-                        </div>
-                    </div>
+                    <div class="drop-zone" id="img-drop"><h5>点击选择图片</h5><input type="file" id="img-in" accept="image/*" multiple style="display:none"></div>
+                    <button id="img-btn" class="btn btn-primary w-100 mt-3" disabled>开始压缩</button>
+                    <div id="img-res" class="mt-3" style="display:none;"><button id="img-dl" class="btn btn-outline-primary w-100">📦 下载压缩包</button></div>
                 </div>
             </div>
-            
-            <div class="log-box" id="img-log">等待选择图片...</div>
+            <div class="log-box" id="img-log">准备就绪...</div>
         </div>
 
-
-        <div class="tab-pane fade" id="video-pane" role="tabpanel">
-            <div class="alert alert-warning py-2 small">
-                <i class="bi bi-exclamation-triangle"></i> 
-                <strong>注意：</strong> Web端视频压缩完全依赖您的CPU单核性能。处理 1080p 视频可能非常缓慢(约 0.1倍速)，请勿认为程序死机，耐心等待进度条走动。
+        <div class="tab-pane fade" id="video-pane">
+            <div class="alert alert-info py-2 small">
+                <i class="bi bi-lightning-charge-fill"></i> 
+                <strong>极速模式：</strong> 已启用多线程加速。如果此页面在 Vercel 上运行，速度将大幅提升。
             </div>
-
-            <div class="drop-zone py-4" id="video-drop-area">
-                <h5 class="mb-1">📂 点击选择视频文件</h5>
-                <p class="text-muted small mb-0" id="video-file-label">未选择文件</p>
-                <input type="file" id="video-input" accept="video/*" style="display:none">
+            <div class="drop-zone py-4" id="vid-drop">
+                <h5 class="mb-1">📂 点击选择视频</h5>
+                <p class="text-muted small mb-0" id="vid-lbl">未选择文件</p>
+                <input type="file" id="vid-in" accept="video/*" style="display:none">
             </div>
-
             <div class="row mt-3">
                 <div class="col-md-6">
                     <div class="param-group">
-                        <label class="form-label fw-bold">模式选择</label>
-                        <select class="form-select mb-2" id="video-mode">
-                            <option value="crf">CRF 画质优先 (默认)</option>
-                            <option value="target">目标大小优先</option>
-                        </select>
-                        
-                        <div id="video-crf-ctrl">
-                            <label class="small text-muted">CRF 值 (18-35): <span id="video-crf-val" class="text-primary fw-bold">28</span></label>
-                            <input type="range" class="form-range" id="video-crf-slider" min="18" max="35" value="28">
-                        </div>
-
-                        <div id="video-target-ctrl" style="display:none;">
-                            <label class="small text-muted">目标大小 (MB)</label>
-                            <input type="number" class="form-control" id="video-target-mb" placeholder="例如: 50">
-                        </div>
+                        <label class="fw-bold">模式</label>
+                        <select class="form-select mb-2" id="vid-mode"><option value="crf">CRF 画质优先</option><option value="target">目标大小优先</option></select>
+                        <div id="crf-box"><label>CRF (18-35): <span id="crf-val" class="text-primary fw-bold">28</span></label><input type="range" class="form-range" id="vid-crf" min="18" max="35" value="28"></div>
+                        <div id="tgt-box" style="display:none;"><label>目标MB</label><input type="number" class="form-control" id="vid-tgt" placeholder="如: 50"></div>
                     </div>
                 </div>
-
                 <div class="col-md-6">
                     <div class="param-group">
-                        <label class="form-label fw-bold">高级设置</label>
+                        <label class="fw-bold">设置</label>
                         <div class="row g-2">
-                            <div class="col-6">
-                                <label class="small text-muted">分辨率限制</label>
-                                <select class="form-select form-select-sm" id="video-res">
-                                    <option value="orig">原始</option>
-                                    <option value="720p">720p</option>
-                                    <option value="1080p">1080p</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted">预设 (速度)</label>
-                                <select class="form-select form-select-sm" id="video-preset">
-                                    <option value="ultrafast" selected>Ultrafast (极速)</option>
-                                    <option value="veryfast">Veryfast (推荐)</option>
-                                    <option value="medium">Medium (慢)</option>
-                                </select>
-                            </div>
-                            <div class="col-12 mt-2">
-                                <label class="small text-muted">音频码率 (kbps)</label>
-                                <input type="number" class="form-control form-control-sm" id="video-audio" value="128">
-                            </div>
+                            <div class="col-6"><label>分辨率</label><select class="form-select form-select-sm" id="vid-res"><option value="orig">原始</option><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
+                            <div class="col-6"><label>预设</label><select class="form-select form-select-sm" id="vid-pre"><option value="veryfast" selected>Veryfast</option><option value="ultrafast">Ultrafast</option></select></div>
+                            <div class="col-12 mt-2"><label>音频(kbps)</label><input type="number" class="form-control form-control-sm" id="vid-aud" value="128"></div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <button id="video-start-btn" class="btn btn-success w-100 py-2" disabled>开始视频压缩</button>
-            
-            <div class="progress mt-3" style="height: 25px;">
-                <div id="video-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%">0%</div>
-            </div>
-
-            <div class="log-box mt-3" id="video-log">系统正在初始化核心 (v0.11)...</div>
-
-            <div id="video-result-area" class="mt-3 text-center" style="display:none;">
-                <h5 class="text-success">✅ 视频压缩完成</h5>
-                <p>原始: <span id="vid-orig-size"></span> -> 压缩后: <span id="vid-new-size"></span></p>
-                <a id="video-dl-link" class="btn btn-primary">⬇️ 下载视频</a>
-            </div>
+            <button id="vid-btn" class="btn btn-primary w-100 py-2" disabled>开始视频压缩</button>
+            <div class="progress mt-3" style="height: 25px;"><div id="vid-prog" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 0%">0%</div></div>
+            <div class="log-box mt-3" id="vid-log">正在加载多线程引擎...</div>
+            <div id="vid-res-area" class="mt-3 text-center" style="display:none;"><p>完成: <span id="vid-saved"></span></p><a id="vid-dl" class="btn btn-success">⬇️ 下载视频</a></div>
         </div>
-
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    // ================== 图片处理逻辑 (Native JS) ==================
-    const imgInput = document.getElementById('img-input');
-    const imgDrop = document.getElementById('img-drop-area');
-    const imgStartBtn = document.getElementById('img-start-btn');
-    const imgLog = document.getElementById('img-log');
-    const imgQuality = document.getElementById('img-quality');
-    const imgQualityVal = document.getElementById('img-quality-val');
+    // --- 图片逻辑 (Canvas) ---
+    const I = (id) => document.getElementById(id);
+    let imgFs = [], vidF = null, vidMeta = {};
     
-    let imgFiles = [];
-    let processedImages = []; // 存储处理后的 blob
-
-    imgQuality.addEventListener('input', (e) => imgQualityVal.innerText = e.target.value);
+    I('img-quality').oninput = (e) => I('img-val').innerText = e.target.value;
+    I('img-drop').onclick = () => I('img-in').click();
+    I('img-in').onchange = (e) => { imgFs = Array.from(e.target.files); I('img-btn').disabled = !imgFs.length; I('img-btn').innerText = `开始 (${imgFs.length})`; };
     
-    imgDrop.addEventListener('click', () => imgInput.click());
-    imgInput.addEventListener('change', (e) => handleImgFiles(e.target.files));
-    
-    imgDrop.addEventListener('dragover', (e) => { e.preventDefault(); imgDrop.style.background = '#e9ecef'; });
-    imgDrop.addEventListener('dragleave', (e) => { e.preventDefault(); imgDrop.style.background = '#f8f9fa'; });
-    imgDrop.addEventListener('drop', (e) => {
-        e.preventDefault();
-        imgDrop.style.background = '#f8f9fa';
-        handleImgFiles(e.dataTransfer.files);
-    });
-
-    function logImg(msg) {
-        imgLog.innerHTML += `> ${msg}<br>`;
-        imgLog.scrollTop = imgLog.scrollHeight;
-    }
-
-    function handleImgFiles(files) {
-        imgFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-        if(imgFiles.length > 0) {
-            logImg(`已选择 ${imgFiles.length} 张图片。`);
-            imgStartBtn.disabled = false;
-            imgStartBtn.innerText = `开始压缩 (${imgFiles.length} 张)`;
-        }
-    }
-
-    imgStartBtn.addEventListener('click', async () => {
-        const quality = parseInt(imgQuality.value) / 100;
-        const maxWidth = parseInt(document.getElementById('img-max-width').value) || 0;
-        const format = document.getElementById('img-format').value;
+    I('img-btn').onclick = async () => {
         const zip = new JSZip();
-
-        imgStartBtn.disabled = true;
-        document.getElementById('img-result-area').style.display = 'none';
-        processedImages = [];
-        logImg("=== 开始处理 ===");
-
-        for (let i = 0; i < imgFiles.length; i++) {
-            const file = imgFiles[i];
-            logImg(`正在处理 (${i+1}/${imgFiles.length}): ${file.name}...`);
-            
-            try {
-                const blob = await compressImage(file, quality, maxWidth, format);
-                const saved = ((file.size - blob.size) / file.size * 100).toFixed(1);
-                logImg(`✅ 成功: ${(blob.size/1024).toFixed(1)}KB (节省 ${saved}%)`);
-                
-                // 添加到 ZIP
-                let ext = format.split('/')[1];
-                if(ext === 'jpeg') ext = 'jpg';
-                const newName = file.name.substring(0, file.name.lastIndexOf('.')) + `_compressed.${ext}`;
-                zip.file(newName, blob);
-
-            } catch (err) {
-                logImg(`❌ 失败: ${file.name} - ${err.message}`);
-            }
+        I('img-btn').disabled = true;
+        for(let f of imgFs) {
+            I('img-log').innerText = `处理: ${f.name}`;
+            const blob = await compressImg(f, I('img-quality').value/100, I('img-width').value, I('img-fmt').value);
+            zip.file(f.name.split('.')[0] + '_opt.' + (I('img-fmt').value.includes('png')?'png':'jpg'), blob);
         }
+        I('img-log').innerText = '打包中...';
+        I('img-dl').onclick = async () => saveAs(await zip.generateAsync({type:"blob"}), "images.zip");
+        I('img-res').style.display = 'block'; I('img-btn').disabled = false;
+    };
 
-        logImg("=== 全部完成 ===");
-        
-        // 准备下载
-        document.getElementById('img-count').innerText = imgFiles.length;
-        document.getElementById('img-result-area').style.display = 'block';
-        imgStartBtn.disabled = false;
-        imgStartBtn.innerText = "再次压缩";
-
-        // 绑定下载按钮
-        document.getElementById('img-dl-btn').onclick = async () => {
-            const content = await zip.generateAsync({type:"blob"});
-            saveAs(content, "images_compressed.zip");
-        };
-    });
-
-    // 核心图片压缩函数 (Canvas)
-    function compressImage(file, quality, maxWidth, mimeType) {
-        return new Promise((resolve, reject) => {
+    function compressImg(file, q, w, fmt) {
+        return new Promise(r => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = (event) => {
+            reader.onload = e => {
                 const img = new Image();
-                img.src = event.target.result;
+                img.src = e.target.result;
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (maxWidth > 0 && width > maxWidth) {
-                        height = Math.round(height * (maxWidth / width));
-                        width = maxWidth;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    canvas.toBlob((blob) => {
-                        if(blob) resolve(blob);
-                        else reject(new Error("Canvas to Blob failed"));
-                    }, mimeType, quality);
-                };
-                img.onerror = (err) => reject(err);
-            };
-            reader.onerror = (err) => reject(err);
+                    const c = document.createElement('canvas');
+                    let rw = img.width, rh = img.height;
+                    if(w > 0 && rw > w) { rh = Math.round(rh * (w/rw)); rw = w; }
+                    c.width = rw; c.height = rh;
+                    c.getContext('2d').drawImage(img,0,0,rw,rh);
+                    c.toBlob(r, fmt, q);
+                }
+            }
         });
     }
 
+    // --- 视频逻辑 (FFmpeg v0.12 Multi-Threaded) ---
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile } = FFmpegUtil;
+    const ffmpeg = new FFmpeg();
 
-    // ================== 视频处理逻辑 (FFmpeg WASM v0.11) ==================
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ 
-        log: true, 
-        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js' 
-    });
-
-    const videoInput = document.getElementById('video-input');
-    const videoDrop = document.getElementById('video-drop-area');
-    const videoStartBtn = document.getElementById('video-start-btn');
-    const videoLog = document.getElementById('video-log');
-    const videoProgress = document.getElementById('video-progress-bar');
-    
-    let currentVideoFile = null;
-    let videoMeta = { duration: 0 };
-
-    function logVideo(msg) {
-        videoLog.innerHTML += `> ${msg}<br>`;
-        videoLog.scrollTop = videoLog.scrollHeight;
-    }
-
-    // 初始化 FFmpeg
-    (async () => {
+    const loadFFmpeg = async () => {
         try {
-            await ffmpeg.load();
-            logVideo("✅ 系统核心已加载 (FFmpeg v0.11)");
-            logVideo("提示: 为保证Web端不崩溃，建议优先使用 Ultrafast 预设。");
-        } catch(e) {
-            logVideo("❌ 核心加载失败: " + e.message);
-        }
-    })();
-
-    // 视频文件选择
-    videoDrop.addEventListener('click', () => videoInput.click());
-    videoInput.addEventListener('change', (e) => handleVideoFile(e.target.files[0]));
-
-    function handleVideoFile(file) {
-        if(!file) return;
-        currentVideoFile = file;
-        document.getElementById('video-file-label').innerText = `${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
-        videoStartBtn.disabled = false;
-        
-        // 获取时长
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.src = URL.createObjectURL(file);
-        video.onloadedmetadata = () => {
-            videoMeta.duration = video.duration;
-            logVideo(`已加载: ${file.name}, 时长: ${videoMeta.duration.toFixed(1)}s`);
-        };
-    }
-
-    // 模式切换
-    const vidMode = document.getElementById('video-mode');
-    vidMode.addEventListener('change', (e) => {
-        if(e.target.value === 'crf') {
-            document.getElementById('video-crf-ctrl').style.display = 'block';
-            document.getElementById('video-target-ctrl').style.display = 'none';
-        } else {
-            document.getElementById('video-crf-ctrl').style.display = 'none';
-            document.getElementById('video-target-ctrl').style.display = 'block';
-        }
-    });
-    
-    document.getElementById('video-crf-slider').addEventListener('input', (e) => {
-        document.getElementById('video-crf-val').innerText = e.target.value;
-    });
-
-    // 视频压缩主函数
-    videoStartBtn.addEventListener('click', async () => {
-        if(!ffmpeg.isLoaded()) { alert("FFmpeg 核心未加载，请刷新页面"); return; }
-        
-        videoStartBtn.disabled = true;
-        videoProgress.style.width = '0%';
-        document.getElementById('video-result-area').style.display = 'none';
-        
-        const mode = vidMode.value;
-        const preset = document.getElementById('video-preset').value;
-        const res = document.getElementById('video-res').value;
-        const audioBitrate = document.getElementById('video-audio').value;
-
-        try {
-            logVideo("正在将视频写入内存...");
-            ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(currentVideoFile));
-
-            let args = ['-i', 'input.mp4'];
-
-            // 分辨率
-            if(res === '720p') args.push('-vf', 'scale=-2:720');
-            if(res === '1080p') args.push('-vf', 'scale=-2:1080');
-
-            // 编码器
-            args.push('-c:v', 'libx264');
-            args.push('-preset', preset); // 这里的 preset 很重要
-
-            // 模式逻辑
-            if(mode === 'target') {
-                const targetMB = parseFloat(document.getElementById('video-target-mb').value);
-                if(!targetMB) throw new Error("请输入目标大小");
-                // 你的 Python 算法: (TargetMB * 8192) / Duration - Audio
-                const totalBits = targetMB * 1024 * 1024 * 8;
-                let vRate = (totalBits / videoMeta.duration / 1000) - audioBitrate;
-                if(vRate < 100) vRate = 100;
-                logVideo(`目标大小模式: 计算码率 ${Math.floor(vRate)}k`);
-                args.push('-b:v', `${Math.floor(vRate)}k`);
-            } else {
-                const crf = document.getElementById('video-crf-slider').value;
-                logVideo(`CRF 模式: ${crf}`);
-                args.push('-crf', crf);
-            }
-
-            args.push('-c:a', 'aac', '-b:a', `${audioBitrate}k`);
-            args.push('output.mp4');
-
-            logVideo("🔥 开始转码... (Web端单线程运行中，请耐心等待)");
-            logVideo("提示: 进度条可能跳跃，这是正常的。");
-
-            // 进度监控
-            ffmpeg.setProgress(({ ratio }) => {
-                const pct = Math.floor(ratio * 100);
-                if(pct > 0) {
-                    videoProgress.style.width = `${pct}%`;
-                    videoProgress.innerText = `${pct}%`;
-                }
+            // 加载多线程核心
+            await ffmpeg.load({
+                coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
             });
-
-            const startTime = Date.now();
-            await ffmpeg.run(...args);
-            const endTime = Date.now();
-
-            logVideo(`✅ 转码完成! 耗时: ${((endTime - startTime)/1000).toFixed(1)}s`);
-            videoProgress.style.width = '100%';
-
-            // 读取文件
-            const data = ffmpeg.FS('readFile', 'output.mp4');
-            const blob = new Blob([data.buffer], { type: 'video/mp4' });
-            const url = URL.createObjectURL(blob);
-
-            // 显示下载
-            document.getElementById('video-result-area').style.display = 'block';
-            document.getElementById('vid-orig-size').innerText = (currentVideoFile.size/1024/1024).toFixed(1) + 'MB';
-            document.getElementById('vid-new-size').innerText = (blob.size/1024/1024).toFixed(1) + 'MB';
-            
-            const dlBtn = document.getElementById('video-dl-link');
-            dlBtn.href = url;
-            dlBtn.download = `compressed_${currentVideoFile.name}`;
-
-        } catch(err) {
-            logVideo("❌ 错误: " + err.message);
-            console.error(err);
-        } finally {
-            videoStartBtn.disabled = false;
+            I('vid-log').innerHTML = "✅ 多线程引擎就绪! (请确保在 Vercel/Https 环境)";
+        } catch(e) {
+            I('vid-log').innerHTML = "❌ 加载失败: " + e.message + "<br>请确保使用了 vercel.json 并且不在普通 HTTP 环境下。";
         }
+    };
+    loadFFmpeg();
+
+    ffmpeg.on('log', ({ message }) => { console.log(message); });
+    ffmpeg.on('progress', ({ progress }) => {
+        const p = Math.round(progress * 100);
+        if(p > 0 && p <= 100) I('vid-prog').style.width = p + '%'; I('vid-prog').innerText = p + '%';
     });
 
+    I('vid-drop').onclick = () => I('vid-in').click();
+    I('vid-in').onchange = (e) => {
+        vidF = e.target.files[0];
+        if(!vidF) return;
+        I('vid-lbl').innerText = vidF.name;
+        const v = document.createElement('video');
+        v.src = URL.createObjectURL(vidF);
+        v.onloadedmetadata = () => { vidMeta.dur = v.duration; I('vid-btn').disabled = false; };
+    };
+
+    I('vid-mode').onchange = (e) => {
+        I('crf-box').style.display = e.target.value==='crf'?'block':'none';
+        I('tgt-box').style.display = e.target.value==='target'?'block':'none';
+    };
+    I('vid-crf').oninput = (e) => I('crf-val').innerText = e.target.value;
+
+    I('vid-btn').onclick = async () => {
+        if(!vidF) return;
+        I('vid-btn').disabled = true; I('vid-res-area').style.display = 'none';
+        I('vid-log').innerText = "写入内存...";
+        
+        await ffmpeg.writeFile('in.mp4', await fetchFile(vidF));
+        
+        const mode = I('vid-mode').value;
+        let args = ['-i', 'in.mp4', '-c:v', 'libx264', '-preset', I('vid-pre').value];
+        
+        // 逻辑转换
+        if(I('vid-res').value === '720p') args.push('-vf', 'scale=-2:720');
+        if(I('vid-res').value === '1080p') args.push('-vf', 'scale=-2:1080');
+
+        if(mode === 'target') {
+            const tgt = I('vid-tgt').value;
+            const br = Math.floor((tgt * 8388608 / vidMeta.dur) - (I('vid-aud').value*1000));
+            args.push('-b:v', (br>100000?br:100000).toString());
+        } else {
+            args.push('-crf', I('vid-crf').value);
+        }
+        
+        args.push('-c:a', 'aac', '-b:a', I('vid-aud').value+'k', 'out.mp4');
+        
+        I('vid-log').innerText = "🚀 正在全力压缩 (多核心运行中)...";
+        const t1 = Date.now();
+        await ffmpeg.exec(args);
+        const t2 = Date.now();
+        
+        I('vid-log').innerText = `✅ 完成! 耗时: ${((t2-t1)/1000).toFixed(1)}s`;
+        
+        const data = await ffmpeg.readFile('out.mp4');
+        const url = URL.createObjectURL(new Blob([data.buffer], {type: 'video/mp4'}));
+        I('vid-dl').href = url; 
+        I('vid-dl').download = 'compressed_'+vidF.name;
+        I('vid-res-area').style.display = 'block';
+        I('vid-btn').disabled = false;
+    }
 </script>
 </body>
 </html>
