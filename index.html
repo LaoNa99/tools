@@ -3,178 +3,339 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web 视频压缩 (兼容版)</title>
-    
+    <title>Halo Media Compressor Web v4.6</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
-    
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .container {
-            background: white;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }
-        h1 { margin: 0 0 15px 0; font-size: 1.4rem; color: #1a73e8; }
-        .badge {
-            background: #e8f0fe; color: #1a73e8; padding: 4px 8px; 
-            border-radius: 4px; font-size: 0.75rem; font-weight: bold;
-            display: inline-block; margin-bottom: 20px;
-        }
-        .upload-box {
-            border: 2px dashed #cbd5e0;
-            padding: 40px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #fafafa;
-        }
-        .upload-box:hover { border-color: #1a73e8; background: #f8fbff; }
-        input[type="file"] { display: none; }
-        button {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 1rem;
-            border-radius: 50px;
-            cursor: pointer;
-            margin-top: 15px;
-            font-weight: 600;
-            width: 100%;
-        }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        .status-box { 
-            margin-top: 20px; text-align: left; font-size: 0.85rem; 
-            background: #2d2d2d; color: #00ff00; padding: 15px; 
-            border-radius: 8px; font-family: monospace; 
-            height: 120px; overflow-y: auto; display: none;
-        }
-        video { width: 100%; border-radius: 8px; margin-top: 15px; background: black; display:none;}
+        body { background-color: #f8f9fa; font-family: "Microsoft YaHei UI", sans-serif; }
+        .container { max-width: 900px; margin-top: 30px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .log-box { background: #2d2d2d; color: #00ff00; font-family: monospace; height: 150px; overflow-y: auto; padding: 10px; border-radius: 5px; font-size: 0.85rem; }
+        .drop-zone { border: 2px dashed #0d6efd; background: #f0f8ff; padding: 30px; text-align: center; cursor: pointer; border-radius: 10px; transition: all 0.2s; }
+        .drop-zone:hover { background: #e0f0ff; }
+        .param-group { background: #f1f3f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        h4 { color: #0d6efd; margin-bottom: 20px; }
+        /* 隐藏原生文件输入 */
+        #file-input { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Web 视频压缩 (兼容版)</h1>
-    <div class="badge">v0.11 单线程核心 - 100% 可用</div>
+    <div class="d-flex justify-content-between align-items-center">
+        <h4>Halo Media Compressor <span class="badge bg-secondary" style="font-size:0.6em">Web Port v4.6</span></h4>
+    </div>
 
-    <label class="upload-box">
-        <span style="font-size:2rem">📂</span><br>
-        <span id="file-label">点击选择 MP4/MOV 视频</span>
-        <input type="file" id="uploader" accept="video/*">
-    </label>
+    <div class="drop-zone" id="drop-area">
+        <h5 class="mb-2">📂 点击或拖拽视频文件到此处</h5>
+        <p class="text-muted small mb-0">支持 MP4, MOV, MKV, AVI</p>
+        <input type="file" id="file-input" accept="video/*">
+    </div>
 
-    <button id="compress-btn" disabled>开始压缩</button>
+    <div id="file-info-card" class="card mt-3" style="display:none;">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <strong>当前文件:</strong> <span id="file-name">-</span>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">时长: <span id="file-duration">-</span></small>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">原始: <span id="file-size">-</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div class="status-box" id="log"></div>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="param-group">
+                <label class="form-label fw-bold">压缩模式</label>
+                <select class="form-select mb-3" id="mode-select">
+                    <option value="crf">CRF 画质优先 (默认)</option>
+                    <option value="target">目标大小优先</option>
+                </select>
+
+                <div id="crf-controls">
+                    <label class="form-label">CRF 值 (18-35): <span id="crf-val" class="text-primary fw-bold">23</span></label>
+                    <input type="range" class="form-range" id="crf-slider" min="18" max="35" value="23">
+                    <div class="form-text small">值越小画质越好体积越大，推荐 23-28。</div>
+                </div>
+
+                <div id="target-controls" style="display:none;">
+                    <label class="form-label">目标大小 (MB)</label>
+                    <input type="number" class="form-control" id="target-mb" placeholder="例如: 50">
+                    <div class="form-text small">程序将自动计算视频码率以接近此大小。</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="param-group">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small">分辨率限制</label>
+                        <select class="form-select form-select-sm" id="res-select">
+                            <option value="orig">原始分辨率</option>
+                            <option value="720p">限制 720p</option>
+                            <option value="1080p">限制 1080p</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">编码速度 (Preset)</label>
+                        <select class="form-select form-select-sm" id="preset-select">
+                            <option value="ultrafast">Ultrafast (最快)</option>
+                            <option value="veryfast" selected>Veryfast (推荐)</option>
+                            <option value="medium">Medium (较慢)</option>
+                        </select>
+                    </div>
+                    <div class="col-6 mt-3">
+                        <label class="form-label small">音频码率 (kbps)</label>
+                        <input type="number" class="form-control form-control-sm" id="audio-bitrate" value="128">
+                    </div>
+                    <div class="col-6 mt-3">
+                        <label class="form-label small">编码器</label>
+                        <select class="form-select form-select-sm" disabled>
+                            <option>H.264 (通用)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-2">
+        <button id="start-btn" class="btn btn-success w-100 py-2" disabled>开始压缩</button>
+        <div class="progress mt-3" style="height: 25px;">
+            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%">0%</div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <label class="form-label fw-bold">运行日志</label>
+        <div class="log-box" id="log-area">等待系统初始化...</div>
+    </div>
     
-    <video id="output-video" controls></video>
-    
-    <a id="download-link" style="display:none; text-decoration:none;">
-        <button style="background:#27ae60; margin-top:10px;">下载视频</button>
-    </a>
+    <div id="result-area" class="mt-3 text-center" style="display:none;">
+        <h5 class="text-success">✅ 压缩完成</h5>
+        <p>压缩后大小: <b id="final-size"></b> (压缩率: <span id="save-rate"></span>)</p>
+        <a id="dl-link" class="btn btn-primary">⬇️ 下载压缩后的视频</a>
+        <video id="preview-video" controls class="w-100 mt-2" style="max-height:300px; background:black;"></video>
+    </div>
+
 </div>
 
 <script>
     const { createFFmpeg, fetchFile } = FFmpeg;
-    let ffmpeg = null;
-    let inputFile = null;
+    // 使用 v0.11 核心，无需 SharedArrayBuffer，兼容性 100%
+    const ffmpeg = createFFmpeg({ 
+        log: true, 
+        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js' 
+    });
 
-    const logEl = document.getElementById('log');
-    const btn = document.getElementById('compress-btn');
+    // UI 元素绑定
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const logArea = document.getElementById('log-area');
+    const startBtn = document.getElementById('start-btn');
+    const progressBar = document.getElementById('progress-bar');
     
+    // 参数元素
+    const modeSelect = document.getElementById('mode-select');
+    const crfControls = document.getElementById('crf-controls');
+    const targetControls = document.getElementById('target-controls');
+    const crfSlider = document.getElementById('crf-slider');
+    const crfVal = document.getElementById('crf-val');
+
+    let currentFile = null;
+    let fileMeta = { duration: 0, width: 0, height: 0 };
+
+    // --- 初始化 ---
     const log = (msg) => {
-        logEl.style.display = 'block';
-        logEl.innerHTML += `> ${msg}<br>`;
-        logEl.scrollTop = logEl.scrollHeight;
-    };
+        logArea.innerHTML += `> ${msg}<br>`;
+        logArea.scrollTop = logArea.scrollHeight;
+    }
 
-    // 初始化 v0.11 版本的 FFmpeg
-    const init = async () => {
+    (async () => {
         try {
-            ffmpeg = createFFmpeg({ 
-                log: true,
-                corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js' 
-            });
             await ffmpeg.load();
-            log("引擎加载成功！请上传视频。");
-        } catch (e) {
-            log("错误: " + e.message);
+            log("系统就绪 (Core v0.11)");
+            log("注意：Web端运行速度取决于您的CPU性能");
+        } catch(e) {
+            log("❌ FFmpeg 加载失败: " + e.message);
         }
-    };
+    })();
 
-    init();
-
-    document.getElementById('uploader').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            inputFile = file;
-            document.getElementById('file-label').innerText = file.name;
-            btn.disabled = false;
+    // --- UI 交互逻辑 (复刻 Python 逻辑) ---
+    modeSelect.addEventListener('change', (e) => {
+        if(e.target.value === 'crf') {
+            crfControls.style.display = 'block';
+            targetControls.style.display = 'none';
+        } else {
+            crfControls.style.display = 'none';
+            targetControls.style.display = 'block';
         }
     });
 
-    btn.addEventListener('click', async () => {
-        if (!ffmpeg || !inputFile) return;
-        btn.disabled = true;
-        btn.innerText = "正在压缩 (请勿关闭页面)...";
-        log("开始读取文件...");
+    crfSlider.addEventListener('input', (e) => {
+        crfVal.innerText = e.target.value;
+    });
 
-        try {
-            // 1. 写入文件
-            ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(inputFile));
-
-            // 2. 执行压缩 (CRF 30)
-            log("压缩中... (单线程模式较慢，请耐心等待)");
-            await ffmpeg.run(
-                '-i', 'input.mp4',
-                '-c:v', 'libx264',
-                '-crf', '30',
-                '-preset', 'ultrafast', // 既然是单线程，用最快预设来补偿速度
-                '-c:a', 'aac',
-                '-b:a', '96k',
-                'output.mp4'
-            );
-
-            log("压缩完成！正在处理...");
-
-            // 3. 读取结果
-            const data = ffmpeg.FS('readFile', 'output.mp4');
-            const blob = new Blob([data.buffer], { type: 'video/mp4' });
-            const url = URL.createObjectURL(blob);
-
-            const video = document.getElementById('output-video');
-            video.src = url;
-            video.style.display = 'block';
-
-            const dlLink = document.getElementById('download-link');
-            dlLink.href = url;
-            dlLink.download = `compressed_${inputFile.name}`;
-            dlLink.style.display = 'block';
+    // --- 文件处理 ---
+    const handleFile = async (file) => {
+        if(!file) return;
+        currentFile = file;
+        
+        // 显示文件信息
+        document.getElementById('file-info-card').style.display = 'block';
+        document.getElementById('file-name').innerText = file.name;
+        document.getElementById('file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+        
+        // 获取视频元数据 (时长/分辨率)
+        const url = URL.createObjectURL(file);
+        const videoTest = document.createElement('video');
+        videoTest.preload = 'metadata';
+        videoTest.src = url;
+        videoTest.onloadedmetadata = () => {
+            fileMeta.duration = videoTest.duration;
+            fileMeta.width = videoTest.videoWidth;
+            fileMeta.height = videoTest.videoHeight;
             
-            btn.innerText = "处理完成";
+            const h = Math.floor(videoTest.duration / 3600);
+            const m = Math.floor((videoTest.duration % 3600) / 60);
+            const s = Math.floor(videoTest.duration % 60);
+            document.getElementById('file-duration').innerText = `${h}:${m}:${s}`;
+            
+            startBtn.disabled = false;
+            startBtn.innerText = "开始压缩";
+            log(`已加载: ${file.name} (时长: ${fileMeta.duration.toFixed(1)}s, 分辨率: ${fileMeta.width}x${fileMeta.height})`);
+        };
+    };
 
-        } catch (err) {
-            log("错误: " + err.message);
-            console.error(err);
-        } finally {
-            btn.disabled = false;
-            if(btn.innerText !== "处理完成") btn.innerText = "重试";
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.background = '#e0f0ff'; });
+    dropArea.addEventListener('dragleave', (e) => { e.preventDefault(); dropArea.style.background = '#f0f8ff'; });
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.style.background = '#f0f8ff';
+        const files = e.dataTransfer.files;
+        if(files.length > 0) handleFile(files[0]);
+    });
+
+    // --- 核心压缩逻辑 (翻译自 Python) ---
+    startBtn.addEventListener('click', async () => {
+        if(!ffmpeg.isLoaded() || !currentFile) return;
+
+        startBtn.disabled = true;
+        document.getElementById('result-area').style.display = 'none';
+        log("正在写入内存...");
+        
+        // 1. 写入文件
+        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(currentFile));
+
+        // 2. 构建命令 (Command Builder)
+        let args = ['-i', 'input.mp4'];
+        
+        const mode = modeSelect.value;
+        const preset = document.getElementById('preset-select').value;
+        const resMode = document.getElementById('res-select').value;
+        const audioBitrate = document.getElementById('audio-bitrate').value || 128;
+
+        // 分辨率缩放逻辑
+        if(resMode === '720p' && fileMeta.height > 720) {
+            args.push('-vf', 'scale=-2:720');
+            log("应用滤镜: 缩放到 720p");
+        } else if(resMode === '1080p' && fileMeta.height > 1080) {
+            args.push('-vf', 'scale=-2:1080');
+            log("应用滤镜: 缩放到 1080p");
         }
+
+        // 码率控制逻辑
+        args.push('-c:v', 'libx264');
+        
+        if (mode === 'target') {
+            // 目标大小模式 (Target Size Mode)
+            const targetMB = parseFloat(document.getElementById('target-mb').value);
+            if (!targetMB || targetMB <= 0) {
+                alert("请输入有效的目标大小");
+                startBtn.disabled = false;
+                return;
+            }
+            
+            // 算法: Bitrate = (TargetMB * 8192) / Duration - AudioBitrate
+            const totalBits = targetMB * 1024 * 1024 * 8;
+            let videoBitrateKbps = (totalBits / fileMeta.duration / 1000) - audioBitrate;
+            if (videoBitrateKbps < 300) videoBitrateKbps = 300; // 最低保护
+
+            log(`目标大小模式: 设定 ${targetMB} MB`);
+            log(`计算视频码率: ${Math.floor(videoBitrateKbps)}k (音频: ${audioBitrate}k)`);
+            
+            args.push('-b:v', `${Math.floor(videoBitrateKbps)}k`);
+        } else {
+            // CRF 模式
+            const crf = document.getElementById('crf-slider').value;
+            log(`CRF 模式: 质量系数 ${crf}`);
+            args.push('-crf', crf);
+        }
+
+        args.push('-preset', preset);
+        args.push('-c:a', 'aac', '-b:a', `${audioBitrate}k`);
+        args.push('output.mp4');
+
+        // 3. 执行 FFmpeg
+        log("开始转码... (请勿关闭页面)");
+        progressBar.style.width = '0%';
+        progressBar.classList.add('progress-bar-animated');
+        
+        // 简易进度模拟 (v0.11 的 progress 有时不如 v0.12 准确)
+        ffmpeg.setProgress(({ ratio }) => {
+            const pct = Math.floor(ratio * 100);
+            if(pct > 0 && pct <= 100) {
+                progressBar.style.width = `${pct}%`;
+                progressBar.innerText = `${pct}%`;
+            }
+        });
+
+        const startTime = Date.now();
+        await ffmpeg.run(...args);
+        
+        const duration = (Date.now() - startTime) / 1000;
+        log(`✅ 转码完成! 耗时: ${duration.toFixed(1)}秒`);
+        progressBar.style.width = '100%';
+        progressBar.innerText = '100%';
+        progressBar.classList.remove('progress-bar-animated');
+
+        // 4. 获取结果
+        const data = ffmpeg.FS('readFile', 'output.mp4');
+        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        const outUrl = URL.createObjectURL(blob);
+
+        // 显示结果
+        const resultArea = document.getElementById('result-area');
+        resultArea.style.display = 'block';
+        
+        document.getElementById('preview-video').src = outUrl;
+        
+        const dlLink = document.getElementById('dl-link');
+        dlLink.href = outUrl;
+        dlLink.download = `compressed_${currentFile.name}`; // 保持原文件名加前缀
+
+        // 计算压缩数据
+        const finalSizeMB = blob.size / 1024 / 1024;
+        const origSizeMB = currentFile.size / 1024 / 1024;
+        const saved = ((origSizeMB - finalSizeMB) / origSizeMB * 100).toFixed(1);
+        
+        document.getElementById('final-size').innerText = finalSizeMB.toFixed(2) + " MB";
+        document.getElementById('save-rate').innerHTML = `<span class="${saved > 0 ? 'text-success' : 'text-danger'}">节省 ${saved}%</span>`;
+        
+        startBtn.disabled = false;
+        startBtn.innerText = "重新压缩";
     });
 </script>
+
 </body>
 </html>
