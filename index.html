@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Media Tool (Stable & Fast)</title>
+    <title>Halo Media Tool (Customized v5.3)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
@@ -15,7 +15,7 @@
     <style>
         body { background-color: #f8f9fa; font-family: "Microsoft YaHei UI", sans-serif; }
         .main-container { max-width: 980px; margin: 30px auto; background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
-        .header { background: #2c3e50; color: white; padding: 20px; } /* 稳重深蓝 */
+        .header { background: #2c3e50; color: white; padding: 20px; } 
         .nav-tabs .nav-link { color: #495057; font-weight: 600; padding: 15px 25px; cursor: pointer; }
         .nav-tabs .nav-link.active { color: #2c3e50; border-bottom: 3px solid #2c3e50; }
         .tab-content { padding: 25px; }
@@ -29,7 +29,7 @@
 
 <div class="main-container">
     <div class="header d-flex justify-content-between align-items-center">
-        <h4 class="m-0">Halo Media Tool <span class="badge bg-success" style="font-size:0.6em">Stable v5.2</span></h4>
+        <h4 class="m-0">Halo Media Tool <span class="badge bg-warning text-dark" style="font-size:0.6em">v5.3 Custom</span></h4>
         <small>Universal Compatibility</small>
     </div>
 
@@ -59,7 +59,7 @@
         </div>
 
         <div class="tab-pane fade" id="video-pane" role="tabpanel">
-            <div class="alert alert-warning py-2 small"><i class="bi bi-speedometer2"></i> <strong>性能优化：</strong> 已启用 Ultrafast 引擎。为保证流畅度，建议使用 720p 分辨率。</div>
+            <div class="alert alert-secondary py-2 small"><i class="bi bi-info-circle"></i> <strong>提示：</strong> Veryfast 模式在网页端可能较慢，若感觉卡顿建议改回 Ultrafast。</div>
             
             <div class="drop-zone py-4" id="vid-drop">
                 <h5 class="mb-1">📂 点击选择视频</h5>
@@ -72,17 +72,29 @@
                     <div class="param-group">
                         <label class="fw-bold">模式</label>
                         <select class="form-select mb-2" id="vid-mode"><option value="crf">CRF 画质优先</option><option value="target">目标大小优先</option></select>
-                        <div id="crf-box"><label class="small text-muted">CRF (18-35): <span id="crf-val" class="text-primary fw-bold">28</span></label><input type="range" class="form-range" id="vid-crf" min="18" max="35" value="28"></div>
+                        <div id="crf-box">
+                            <label class="small text-muted">CRF (18-35): <span id="crf-val" class="text-primary fw-bold">25</span></label>
+                            <input type="range" class="form-range" id="vid-crf" min="18" max="35" value="25">
+                        </div>
                         <div id="tgt-box" style="display:none;"><label class="small text-muted">目标大小 (MB)</label><input type="number" class="form-control" id="vid-tgt" placeholder="50"></div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="param-group">
-                        <label class="fw-bold">优化设置</label>
+                        <label class="fw-bold">详细设置</label>
                         <div class="row g-2">
-                            <div class="col-6"><label class="small text-muted">分辨率</label><select class="form-select form-select-sm" id="vid-res"><option value="720p" selected>720p (推荐)</option><option value="orig">原始</option><option value="1080p">1080p</option></select></div>
-                            <div class="col-6"><label class="small text-muted">速度预设</label><select class="form-select form-select-sm" id="vid-pre"><option value="ultrafast" selected>Ultrafast (最快)</option><option value="veryfast">Veryfast</option></select></div>
-                            <div class="col-12 mt-2"><label class="small text-muted">音频(kbps)</label><input type="number" class="form-control form-control-sm" id="vid-aud" value="128"></div>
+                            <div class="col-6"><label class="small text-muted">分辨率</label><select class="form-select form-select-sm" id="vid-res"><option value="1080p" selected>1080p</option><option value="720p">720p</option><option value="orig">原始</option></select></div>
+                            
+                            <div class="col-6"><label class="small text-muted">速度预设</label><select class="form-select form-select-sm" id="vid-pre">
+                                <option value="veryfast" selected>Veryfast (默认)</option>
+                                <option value="faster">Faster</option>
+                                <option value="ultrafast">Ultrafast (极速)</option>
+                                <option value="superfast">Superfast</option>
+                            </select></div>
+                            
+                            <div class="col-6 mt-2"><label class="small text-muted">音频(kbps)</label><input type="number" class="form-control form-control-sm" id="vid-aud" value="96"></div>
+                            
+                            <div class="col-6 mt-2"><label class="small text-muted">编码格式</label><select class="form-select form-select-sm" id="vid-codec"><option value="libx264" selected>H.264 (默认)</option><option value="libx265">H.265 (HEVC)</option></select></div>
                         </div>
                     </div>
                 </div>
@@ -90,7 +102,7 @@
 
             <button id="vid-btn" class="btn btn-primary w-100 py-2" disabled>开始视频压缩</button>
             <div class="progress mt-3" style="height: 25px;"><div id="vid-prog" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%">0%</div></div>
-            <div class="log-box mt-3" id="vid-log">系统正在初始化核心 (v0.11 Stable)...</div>
+            <div class="log-box mt-3" id="vid-log">系统正在初始化核心 (v0.11 Custom)...</div>
             <div id="vid-res-area" class="mt-3 text-center" style="display:none;"><p>压缩前: <b id="orig-size"></b> -> 后: <b id="new-size"></b> (<span id="saved-pct"></span>)</p><a id="vid-dl" class="btn btn-primary">⬇️ 下载视频</a></div>
         </div>
     </div>
@@ -145,7 +157,7 @@
         });
     }
 
-    // --- 视频逻辑 (回退到 v0.11 稳定版) ---
+    // --- 视频逻辑 (v0.11 定制版) ---
     const { createFFmpeg, fetchFile } = FFmpeg;
     const ffmpeg = createFFmpeg({ 
         log: true, 
@@ -159,7 +171,7 @@
     (async () => {
         try {
             await ffmpeg.load();
-            I('vid-log').innerHTML = "✅ 引擎加载成功 (v0.11 Stable)<br>> 请上传视频。";
+            I('vid-log').innerHTML = "✅ 引擎加载成功 (v5.3)<br>> 默认参数已应用: 1080p, CRF 25, Veryfast";
         } catch(e) {
             I('vid-log').innerHTML = `<span style="color:red">❌ 加载失败: ${e.message}</span>`;
         }
@@ -185,15 +197,19 @@
         
         try {
             ffmpeg.FS('writeFile', 'in.mp4', await fetchFile(vidFile));
-            let args = ['-i', 'in.mp4', '-c:v', 'libx264'];
             
-            // 强制优化参数
-            const pre = I('vid-pre').value;
-            args.push('-preset', pre);
+            // 编码器判断
+            const codec = I('vid-codec').value;
+            let args = ['-i', 'in.mp4', '-c:v', codec];
             
+            // 预设参数
+            args.push('-preset', I('vid-pre').value);
+            
+            // 分辨率
             if(I('vid-res').value === '720p') args.push('-vf', 'scale=-2:720');
             if(I('vid-res').value === '1080p') args.push('-vf', 'scale=-2:1080');
 
+            // 模式判断
             if(I('vid-mode').value === 'target') {
                 const tgt = parseFloat(I('vid-tgt').value);
                 const br = Math.floor((tgt * 8388608 / vidMeta.dur) - (I('vid-aud').value*1000));
@@ -201,9 +217,11 @@
             } else {
                 args.push('-crf', I('vid-crf').value);
             }
+            
             args.push('-c:a', 'aac', '-b:a', `${I('vid-aud').value}k`, 'out.mp4');
 
-            logVid(`🚀 开始转码...`);
+            logVid(`🚀 开始转码... (使用 ${I('vid-pre').value})`);
+            logVid(`⚠ 提示: Veryfast 模式下进度条可能更新较慢，请耐心等待...`);
             
             ffmpeg.setProgress(({ ratio }) => {
                 const p = Math.round(ratio * 100);
@@ -224,6 +242,10 @@
             I('vid-res-area').style.display = 'block';
         } catch(e) {
             logVid(`❌ 错误: ${e.message}`);
+            // 如果是因为 H.265 报错，给出提示
+            if(I('vid-codec').value === 'libx265') {
+                logVid("⚠ 提示: 当前 Web 引擎可能不支持 H.265，请切换回 H.264 重试。");
+            }
         } finally { I('vid-btn').disabled = false; }
     };
 </script>
